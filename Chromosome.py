@@ -244,23 +244,23 @@ class ExperimentSet:
         ]
         for i in range(self.n_experiments):
             self.populations[i].train(self.n_generations)
-            self.plot(self.populations[i])
 
     def get_mean_history(self):
         df = pd.DataFrame(columns=["Generation", "Mean Fitness"])
 
         # Get best_fitness from each population in each generation
         historys = [population.history for population in self.populations]
-        for gen in self.n_generations:
-            df = df.append(
-                {
-                    "Generation": gen,
-                    "Mean Fitness": np.mean(
-                        [history["best_fitness"] for history in historys]
-                    ),
-                },
-                ignore_index=True,
-            )
+        for gen in range(self.n_generations):
+            data = {
+                "Generation": gen,
+                "Mean Fitness": np.mean(
+                    [
+                        historys[i].iloc[gen]["best_fitness"]
+                        for i in range(len(historys))
+                    ]
+                ),
+            }
+            df = pd.concat([df, pd.DataFrame(data, index=[0])], ignore_index=True)
         return df
 
 
@@ -311,6 +311,8 @@ def test():
     print("c fitness:", c.fitness)
     print("d fitness:", d.fitness)
 
+
+def test_pop():
     # population
     population = Population(
         size=100,
@@ -347,3 +349,30 @@ def test():
     # fitness history
     plt.plot(population_history["generation"], population_history["best_fitness"])
     plt.show()
+
+
+def main():
+    es = ExperimentSet(
+        populations_param={
+            "mutation_rate": 0.1,
+            "crossover_rate": 0.8,
+            "size": 100,
+            "elitism_number": 1,
+            "steady_state": False,
+            "duplicate_elitism": False,
+        },
+        n_experiments=20,
+        n_generations=40,
+        fitness_func=f6,
+    )
+
+    es.run()
+
+    x = es.get_mean_history()
+
+    plt.plot(x["Generation"], x["Mean Fitness"])
+    plt.show()
+
+
+if __name__ == "__main__":
+    main()
