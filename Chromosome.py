@@ -242,7 +242,25 @@ class ExperimentSet:
         self.populations = [
             Population(**self.populations_param) for _ in range(self.n_experiments)
         ]
+        print("=" * 25)
+        print("POPULATION PARAMS")
+        print("=" * 25)
+        print("Mutation rate:         ", self.populations_param["mutation_rate"])
+        print("Crossover rate:        ", self.populations_param["crossover_rate"])
+        print("Population size:       ", self.populations_param["size"])
+        print("Elitism number:        ", self.populations_param["elitism_number"])
+        print("Steady state:          ", self.populations_param["steady_state"])
+        print("Duplicate elitism:     ", self.populations_param["duplicate_elitism"])
+        print("Fitness function:      ", self.fitness_func.__name__)
+        print("Number of generations: ", self.n_generations)
+        print("Number of experiments: ", self.n_experiments)
+        print("=" * 25)
+
         for i in range(self.n_experiments):
+            print(
+                f"Running experiment {i + 1} of {self.n_experiments}, "
+                f"best fitness: {self.populations[i].get_best_n(1)[0].fitness:.2f}",
+            )
             self.populations[i].train(self.n_generations)
 
     def get_mean_history(self):
