@@ -1,5 +1,5 @@
 from dataclasses import dataclass
-from typing import Union, Callable, Optional
+from typing import TypedDict, Union, Callable, Optional
 import numpy as np
 import pandas as pd
 import matplotlib.pyplot as plt
@@ -118,6 +118,8 @@ class Population:
     mutation_rate: float
     crossover_rate: float
     elitism_number: int
+    steady_state: bool
+    duplicate_elitism: bool
     size: int
     history: pd.DataFrame
 
@@ -127,6 +129,8 @@ class Population:
         crossover_rate: float = 0.8,
         size: int = 100,
         elitism_number: int = 1,
+        steady_state: bool = False,
+        duplicate_elitism: bool = False,
     ):
         # history of best individuals
         self.history = pd.DataFrame(
@@ -143,6 +147,8 @@ class Population:
         self.crossover_rate = crossover_rate  # crossover rate
         # number of best individuals to keep each generation
         self.elitism_number = elitism_number
+        self.steady_state = steady_state  # use steady state instead of generational
+        self.duplicate_elitism = duplicate_elitism  # allow duplicate elitism
         self.size = size  # population size
 
         # generate random individuals
@@ -203,7 +209,76 @@ class Population:
             random_call(self.crossover_rate, callback=crossover)
 
 
-if __name__ == "__main__":
+class PopulationParams(TypedDict):
+    mutation_rate: float
+    crossover_rate: float
+    size: int
+    elitism_number: int
+    steady_state: bool
+    duplicate_elitism: bool
+
+
+class ExperimentSet:
+    n_experiments: int
+    n_generations: int
+    populations_param: PopulationParams
+    fitness_func: Callable[[float, float], float] = f6
+
+    def __init__(
+        self,
+        populations_param: list[dict],
+        fitness_func: Callable[[float, float], float] = f6,
+        n_experiments: int = 20,
+        n_generations: int = 40,
+    ):
+        self.populations = []
+        self.n_experiments = n_experiments
+        self.populations_param = populations_param
+        self.fitness_func = fitness_func
+        self.n_experiments = n_experiments
+        self.n_generations = n_generations
+
+    def run(self):
+        self.populations = [
+            Population(**self.populations_param) for _ in range(self.n_experiments)
+        ]
+        for i in range(self.n_experiments):
+            self.populations[i].train(self.n_generations)
+            self.plot(self.populations[i])
+
+    def get_mean_history(self):
+        df = pd.DataFrame(columns=["Generation", "Mean Fitness"])
+
+        # Get best_fitness from each population in each generation
+        historys = [population.history for population in self.populations]
+        for gen in self.n_generations:
+            df = df.append(
+                {
+                    "Generation": gen,
+                    "Mean Fitness": np.mean(
+                        [history["best_fitness"] for history in historys]
+                    ),
+                },
+                ignore_index=True,
+            )
+        return df
+
+
+def run_experiments():
+    ExperimentSet(
+        populations_param={
+            "mutation_rate": 0.1,
+            "crossover_rate": 0.8,
+            "size": 100,
+            "elitism_number": 1,
+            "steady_state": False,
+            "duplicate_elitism": False,
+        },
+        fitness_func=f6,
+    ).run()
+
+
+def test():
     print("Hello World")
     # Test mutation
     a = Chromosome.from_bit_str("00000000000000000000000000000000000000000000")
