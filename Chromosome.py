@@ -199,22 +199,24 @@ class Population:
         )
 
     def _steady_state_selection(self):
-        #based on the fitness of each individual, select the best ones
+        # based on the fitness of each individual, select the best ones
         # step 1: sort the population by fitness
-        sorted_pop = sorted(self.individuals, key=lambda x: x.fitness, reverse=True)
+        sorted_pop = sorted(
+            self.individuals, key=lambda x: x.fitness, reverse=True)
         # step 2: do a non uniform random selection of the individuals, the best ones have a higher chance of being selected
         weights = [i.fitness for i in sorted_pop]
+        # normalize the weights
+        weights = [i/sum(weights) for i in weights]
         # step 3: select the individuals
-        selected = np.random.choice(sorted_pop, size=self.size//4, p=weights) # p is the probability of each individual to be selected
+        # p is the probability of each individual to be selected
+        selected = np.random.choice(sorted_pop, size=self.size//4, p=weights)
         # step 4: form the selected individuals, generate the new population
         self.individuals = []
-        for i in range(self.size//4):
-            for j in range(i+1, self.size//4):
-                self.individuals.append(selected[i].crossover(selected[j]))
+        for _ in range(4):
+            self.individuals.extend(selected)
+        self.crossover_population()
         # step 5: mutate the new population
         self.mutate_population()
-        # do a crossover between the best individuals
-        self.crossover_population()
 
     def _non_steady_state_selection(self):
         self.crossover_population()
@@ -222,7 +224,7 @@ class Population:
 
     def next_gen(self):
         the_elite = self.get_best_n(self.elitism_number)
-        if self.steady_state: 
+        if self.steady_state:
             self._steady_state_selection()
         else:
             self._non_steady_state_selection()
@@ -321,7 +323,7 @@ def run_experiments():
         "crossover_rate": 0.8,
         "size": 100,
         "elitism_number": 1,
-        "steady_state": False,
+        "steady_state": True,
         "duplicate_elitism": False,
     }
     ExperimentSet(
@@ -411,7 +413,7 @@ def main():
             "crossover_rate": 0.8,
             "size": 100,
             "elitism_number": 1,
-            "steady_state": False,
+            "steady_state": True,
             "duplicate_elitism": False,
         },
         n_experiments=20,
