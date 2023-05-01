@@ -7,6 +7,16 @@ import matplotlib.pyplot as plt
 
 Bit = Union["0", "1"]
 
+
+class PopulationParams(TypedDict):
+    mutation_rate: float
+    crossover_rate: float
+    size: int
+    elitism_number: int
+    steady_state: bool
+    duplicate_elitism: bool
+
+
 GENE_SIZE = 22
 CHROMOSOME_SIZE = 44
 
@@ -25,7 +35,8 @@ class Chromosome:
     def __init__(self, genes: list[Bit], size: int = CHROMOSOME_SIZE):
         super().__init__()
         if len(genes) != size:
-            raise ValueError(f"Chromosome must have at least {size} gene. {len(genes)}")
+            raise ValueError(
+                f"Chromosome must have at least {size} gene. {len(genes)}")
         if not all([gene in ["0", "1"] for gene in genes]):
             raise ValueError("Chromosome genes must be represented by 0 or 1.")
         self.genes = genes
@@ -187,11 +198,36 @@ class Population:
             [self.history, pd.DataFrame(data, index=[0])], ignore_index=True
         )
 
-    def next_gen(self):
-        the_best_ones = self.get_best_n(self.elitism_number)
+    def _steady_state_selection(self):
+        #based on the fitness of each individual, select the best ones
+        # step 1: sort the population by fitness
+        sorted_pop = sorted(self.individuals, key=lambda x: x.fitness, reverse=True)
+        # step 2: do a non uniform random selection of the individuals, the best ones have a higher chance of being selected
+        weights = [i.fitness for i in sorted_pop]
+        # step 3: select the individuals
+        selected = np.random.choice(sorted_pop, size=self.size//4, p=weights) # p is the probability of each individual to be selected
+        # step 4: form the selected individuals, generate the new population
+        self.individuals = []
+        for i in range(self.size//4):
+            for j in range(i+1, self.size//4):
+                self.individuals.append(selected[i].crossover(selected[j]))
+        # step 5: mutate the new population
+        self.mutate_population()
+        # do a crossover between the best individuals
+        self.crossover_population()
+
+    def _non_steady_state_selection(self):
         self.crossover_population()
         self.mutate_population()
-        self.individuals = the_best_ones + self.individuals[self.elitism_number :]
+
+    def next_gen(self):
+        the_elite = self.get_best_n(self.elitism_number)
+        if self.steady_state: 
+            self._steady_state_selection()
+        else:
+            self._non_steady_state_selection()
+        self.individuals = the_elite + \
+            self.individuals[self.elitism_number:]
 
     def mutate_population(self):
         for individual in self.individuals:
@@ -207,15 +243,6 @@ class Population:
                 self.individuals[i].crossover(self.individuals[i + 1])
 
             random_call(self.crossover_rate, callback=crossover)
-
-
-class PopulationParams(TypedDict):
-    mutation_rate: float
-    crossover_rate: float
-    size: int
-    elitism_number: int
-    steady_state: bool
-    duplicate_elitism: bool
 
 
 class ExperimentSet:
@@ -245,12 +272,17 @@ class ExperimentSet:
         print("=" * 25)
         print("POPULATION PARAMS")
         print("=" * 25)
-        print("Mutation rate:         ", self.populations_param["mutation_rate"])
-        print("Crossover rate:        ", self.populations_param["crossover_rate"])
+        print("Mutation rate:         ",
+              self.populations_param["mutation_rate"])
+        print("Crossover rate:        ",
+              self.populations_param["crossover_rate"])
         print("Population size:       ", self.populations_param["size"])
-        print("Elitism number:        ", self.populations_param["elitism_number"])
-        print("Steady state:          ", self.populations_param["steady_state"])
-        print("Duplicate elitism:     ", self.populations_param["duplicate_elitism"])
+        print("Elitism number:        ",
+              self.populations_param["elitism_number"])
+        print("Steady state:          ",
+              self.populations_param["steady_state"])
+        print("Duplicate elitism:     ",
+              self.populations_param["duplicate_elitism"])
         print("Fitness function:      ", self.fitness_func.__name__)
         print("Number of generations: ", self.n_generations)
         print("Number of experiments: ", self.n_experiments)
@@ -278,20 +310,22 @@ class ExperimentSet:
                     ]
                 ),
             }
-            df = pd.concat([df, pd.DataFrame(data, index=[0])], ignore_index=True)
+            df = pd.concat([df, pd.DataFrame(data, index=[0])],
+                           ignore_index=True)
         return df
 
 
 def run_experiments():
+    populations_param = {
+        "mutation_rate": 0.1,
+        "crossover_rate": 0.8,
+        "size": 100,
+        "elitism_number": 1,
+        "steady_state": False,
+        "duplicate_elitism": False,
+    }
     ExperimentSet(
-        populations_param={
-            "mutation_rate": 0.1,
-            "crossover_rate": 0.8,
-            "size": 100,
-            "elitism_number": 1,
-            "steady_state": False,
-            "duplicate_elitism": False,
-        },
+        populations_param=populations_param,
         fitness_func=f6,
     ).run()
 
@@ -365,7 +399,8 @@ def test_pop():
     plt.show()
 
     # fitness history
-    plt.plot(population_history["generation"], population_history["best_fitness"])
+    plt.plot(population_history["generation"],
+             population_history["best_fitness"])
     plt.show()
 
 
