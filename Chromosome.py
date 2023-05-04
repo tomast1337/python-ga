@@ -1,5 +1,5 @@
 from dataclasses import dataclass
-from typing import TypedDict, Union, Callable, Optional
+from typing import Protocol, TypedDict, Union, Callable, Optional, List, Tuple
 import numpy as np
 import pandas as pd
 import matplotlib.pyplot as plt
@@ -7,13 +7,13 @@ import matplotlib.pyplot as plt
 
 Bit = Union["0", "1"]
 
-
 class PopulationParams(TypedDict):
     mutation_rate: float
     crossover_rate: float
     size: int
     elitism_number: int
     steady_state: bool
+    windowing: bool
     duplicate_elitism: bool
 
 
@@ -29,10 +29,10 @@ def f6(x: float, y: float) -> float:
 
 @dataclass
 class Chromosome:
-    genes: list[Bit]
+    genes: List[Bit]
     size: int = CHROMOSOME_SIZE
 
-    def __init__(self, genes: list[Bit], size: int = CHROMOSOME_SIZE):
+    def __init__(self, genes: List[Bit], size: int = CHROMOSOME_SIZE):
         super().__init__()
         if len(genes) != size:
             raise ValueError(
@@ -85,7 +85,7 @@ class Chromosome:
     def __repr__(self) -> str:
         return "".join(self.genes)
 
-    def _to_int(self) -> tuple[int, int]:
+    def _to_int(self) -> Tuple[int, int]:
         """
         Converte a sequência de bits dos genes para um par de números inteiros.
         Usado na conversão para coordenadas.
@@ -94,7 +94,7 @@ class Chromosome:
         y = int("".join(self.genes[GENE_SIZE:]), 2)
         return x, y
 
-    def to_coords(self, max: float = 100, min: float = -100) -> tuple[float, float]:
+    def to_coords(self, max: float = 100, min: float = -100) -> Tuple[float, float]:
         """
         Usando para o fitness
         """
@@ -125,12 +125,13 @@ def random_call(chance: float, callback: Optional[Callable] = None) -> bool:
 
 
 class Population:
-    individuals: list[Chromosome]
+    individuals: List[Chromosome]
     mutation_rate: float
     crossover_rate: float
     elitism_number: int
     steady_state: bool
-    duplicate_elitism: bool
+    duplicate_selection: bool
+    windowing: bool
     size: int
     history: pd.DataFrame
 
@@ -141,7 +142,8 @@ class Population:
         size: int = 100,
         elitism_number: int = 1,
         steady_state: bool = False,
-        duplicate_elitism: bool = False,
+        duplicate_selection: bool = False,
+        windowing: bool = False,
     ):
         # history of best individuals
         self.history = pd.DataFrame(
@@ -159,7 +161,8 @@ class Population:
         # number of best individuals to keep each generation
         self.elitism_number = elitism_number
         self.steady_state = steady_state  # use steady state instead of generational
-        self.duplicate_elitism = duplicate_elitism  # allow duplicate elitism
+        self.duplicate_selection = duplicate_selection  # allow duplicate elitism
+        self.windowing = windowing  # use windowing instead of truncation
         self.size = size  # population size
 
         # generate random individuals
@@ -168,7 +171,7 @@ class Population:
             self.individuals.append(Chromosome.random())
         self.register_gen(0)
 
-    def get_best_n(self, count: int) -> list[Chromosome]:
+    def get_best_n(self, count: int) -> List[Chromosome]:
         """
         Retorna os `n` melhores indivíduos da população.
         """
@@ -205,16 +208,26 @@ class Population:
             self.individuals, key=lambda x: x.fitness, reverse=True)
         # step 2: do a non uniform random selection of the individuals, the best ones have a higher chance of being selected
         weights = [i.fitness for i in sorted_pop]
+        
+        # if windowing is enabled, normalize the weights push the higher weights to the top and lower weights to the bottom
+        if self.windowing:
+            max_weight = max(weights)
+            min_weight = min(weights)
+            weights = [(weight - min_weight) / (max_weight - min_weight) for weight in weights]
+
         # normalize the weights
         weights = [i/sum(weights) for i in weights]
+
         # step 3: select the individuals
         # p is the probability of each individual to be selected
-        selected = np.random.choice(sorted_pop, size=self.size//4, p=weights)
+        selected = np.random.choice(sorted_pop, size=self.size//4, p=weights, replace=self.duplicate_selection)
+        
         # step 4: form the selected individuals, generate the new population
         self.individuals = []
         for _ in range(4):
             self.individuals.extend(selected)
         self.crossover_population()
+        
         # step 5: mutate the new population
         self.mutate_population()
 
@@ -255,7 +268,7 @@ class ExperimentSet:
 
     def __init__(
         self,
-        populations_param: list[dict],
+        populations_param: List[dict],
         fitness_func: Callable[[float, float], float] = f6,
         n_experiments: int = 20,
         n_generations: int = 40,
@@ -331,81 +344,6 @@ def run_experiments():
         fitness_func=f6,
     ).run()
 
-
-def test():
-    print("Hello World")
-    # Test mutation
-    a = Chromosome.from_bit_str("00000000000000000000000000000000000000000000")
-    b = Chromosome.from_bit_str("11111111111111111111111111111111111111111111")
-    print("a:", str(a))
-    a.mutate()
-    print("a:", str(a), "mutated")
-    print("b:", str(b))
-    b.mutate()
-    print("b:", str(b), "mutated")
-
-    # Test crossover
-    c = Chromosome.from_bit_str("01010101010101010101010101010101010101010101")
-    d = Chromosome.from_bit_str("11111111111111111111111111111111111111111111")
-    print("c:", str(c))
-    print("d:", str(d))
-    c.crossover(d)
-    print("c:", str(c), "crossovered")
-    print("d:", str(d), "crossovered")
-
-    # Test to_coords
-    print("a coords:", a.to_coords())
-    print("b coords:", b.to_coords())
-    print("c coords:", c.to_coords())
-    print("d coords:", d.to_coords())
-
-    # Test fitness
-    print("a fitness:", a.fitness)
-    print("b fitness:", b.fitness)
-    print("c fitness:", c.fitness)
-    print("d fitness:", d.fitness)
-
-
-def test_pop():
-    # population
-    population = Population(
-        size=100,
-        elitism_number=10,
-    )
-    population.train(40)
-    population_history = population.history
-    print(population.history)
-
-    # plot
-    fig = plt.figure()
-    ax = fig.add_subplot(111, projection="3d")
-    ax.scatter(
-        population_history["best_x"],
-        population_history["best_y"],
-        population_history["best_fitness"],
-        c="r",
-        marker="x",
-    )
-
-    # add f6(x,y) surface
-    x = np.linspace(-10, 10, 100)
-    y = np.linspace(-10, 10, 100)
-    X, Y = np.meshgrid(x, y)
-    Z = f6(X, Y)
-    ax.plot_surface(X, Y, Z, alpha=0.3)
-
-    ax.set_xlabel("x")
-    ax.set_ylabel("y")
-    ax.set_zlabel("f6(x,y)")
-
-    plt.show()
-
-    # fitness history
-    plt.plot(population_history["generation"],
-             population_history["best_fitness"])
-    plt.show()
-
-
 def main():
     es = ExperimentSet(
         populations_param={
@@ -419,12 +357,11 @@ def main():
         n_experiments=20,
         n_generations=40,
         fitness_func=f6,
+        windowing=False,
     )
 
     es.run()
-
     x = es.get_mean_history()
-
     plt.plot(x["Generation"], x["Mean Fitness"])
     plt.show()
 
