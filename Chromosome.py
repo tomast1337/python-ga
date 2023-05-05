@@ -258,9 +258,6 @@ class Population:
 
     def _perform_simple_selection(self):
 
-        # Set the fitness of each individual
-        self.calculate_fitness()
-
         # Perform crossover and mutation to create the new generation
         new_individuals = self.crossover_population()
         new_individuals = self.mutate_population(new_individuals)
@@ -318,8 +315,7 @@ class Population:
         weights = [i.fitness2 for i in sorted_pop]
 
         # normalize the weights from 0 to 1 for np.random.choice
-        x = weights
-        normalized_weights = [float(i) / sum(x) for i in x]
+        normalized_weights = np.array(weights) / sum(weights)
 
         # step 3: select the individuals
         # p is the probability of each individual to be selected
