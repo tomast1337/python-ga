@@ -42,6 +42,7 @@ class Chromosome:
             raise ValueError("Chromosome genes must be represented by 0 or 1.")
         self.genes = genes
         self.size = size
+        self.fitness2 = 0
 
     @classmethod
     def from_bit_str(cls, bits: str):
@@ -112,7 +113,14 @@ class Chromosome:
         """
         coords = self.to_coords()
         return func(*coords)
-
+    
+    @property
+    def evaluation(self, func: Callable[[float, float], float] = f6) -> float:
+        """
+        Calcula a avaliação do cromossomo de acordo com a função de avaliação `func`.
+        """
+        coords = self.to_coords()
+        return func(*coords)
 
 def random_call(chance: float, callback: Optional[Callable] = None) -> bool:
     """
@@ -152,11 +160,6 @@ class Population:
             if linear_scaling and windowing:
                 raise ValueError(
                     "Linear scaling and windowing cannot be used together."
-                )
-        else:
-            if duplicate_selection or linear_scaling or windowing:
-                raise ValueError(
-                    "Duplicate selection, linear scaling and windowing cannot be with out steady state."
                 )
 
         # history of best individuals
@@ -217,82 +220,147 @@ class Population:
             [self.history, pd.DataFrame(data, index=[0])], ignore_index=True
         )
 
-    def _steady_state_selection(self):
-        # based on the fitness of each individual, select the best ones
-        # step 1: sort the population by fitness
-        sorted_pop = sorted(self.individuals, key=lambda x: x.fitness, reverse=True)
-        # step 2: do a non uniform random selection of the individuals, the best ones have a higher chance of being selected
-        weights = [i.fitness for i in sorted_pop]
-        # if windowing is enabled, normalize the weights push the higher weights to the top and lower weights to the bottom
+    def _fitness_evaluation(self):
+        # Evaluate each individual, and store the result in the fitness attribute
+        for individual in self.individuals:
+            individual.fitness2 = individual.evaluation
+
+    def _fitness_windowing(self):
+        # Subtract the minimum evaluation in the population from each individual
+        # This will make the minimum evaluation equal to 0
+        min_evaluation = min([individual.evaluation for individual in self.individuals])
+        for individual in self.individuals:
+            individual.fitness2 = individual.evaluation - min_evaluation
+
+    def _fitness_linear_scaling(self, increment: int = 1) -> list[float]:
+        # Assign fitness based on the rank of each individual sorted by evaluation
+
+        # The larger the increment, the more selective the sorting will be
+        # (the higher the difference between the best and worst individuals)
+
+        # Sort the population in descending order based on the evaluation function (f6)
+        sorted_pop = sorted(self.individuals, key=lambda x: x.evaluation, reverse=True)
+        max = sorted_pop[0].evaluation
+        min = sorted_pop[-1].evaluation
+        for i in range(len(sorted_pop)):
+            sorted_pop[i].fitness2 = min + (max - min) * (i / (len(sorted_pop) - 1))
+
+    def calculate_fitness(self):
+        """Update the fitness values for every individual in the population."""
+
+        # Set the fitness of each individual
         if self.windowing:
-            max_weight = max(weights)
-            min_weight = min(weights)
-            new_weights = [
-                (weight - min_weight) / (max_weight - min_weight) for weight in weights
-            ]
-            weights = new_weights
+            self._fitness_windowing()
+        elif self.linear_scaling:
+            self._fitness_linear_scaling()
+        else:
+            self._fitness_evaluation()
 
-        # linear_scaling
-        if self.linear_scaling:
-            weights = list(reversed(range(1, len(weights) + 1)))
+    def _perform_simple_selection(self):
 
-        # normalize the weights
-        weights = [i / sum(weights) for i in weights]
+        # Set the fitness of each individual
+        self.calculate_fitness()
+
+        # Perform crossover and mutation to create the new generation
+        new_individuals = self.crossover_population()
+        new_individuals = self.mutate_population(new_individuals)
+        self.individuals = new_individuals
+
+    def _perform_steady_state_selection(self, n: int = 25):
+        # Ordenar por ordem decrescente de fitness
+        sorted_pop = sorted(self.individuals, key=lambda x: x.fitness, reverse=True)
+
+        # Gerar n novos indivíduos a partir do cruzamento
+        new_individuals = self.crossover_population(n)
+        new_individuals = self.mutate_population(new_individuals)
+
+        # Substituir os n piores indivíduos pelos novos
+        self.individuals = sorted_pop[:-n] + new_individuals
+
+    def next_gen(self):
+        the_elite = self.get_best_n(self.elitism_number)
+
+        # Set the fitness of each individual
+        self.calculate_fitness()
+
+        if self.steady_state:
+            self._perform_steady_state_selection()
+        else:
+            self._perform_simple_selection()
+
+        # Add the elite to the new generation
+        self.individuals = the_elite + self.individuals[self.elitism_number :]
+
+    def mutate_population(self, individuals: Optional[List[Chromosome]] = None) -> List[Chromosome]:
+        """
+        Return a new population with mutated individuals. If individuals is None,
+        mutate the entire population.
+        """
+        if individuals is None:
+            individuals = self.individuals
+        new_individuals = []
+        for individual in individuals:
+            new = individual.copy()
+            if np.random.rand() < self.mutation_rate:
+                new.mutate()
+            new_individuals.append(new)
+        return new_individuals
+
+    def roulette_selection(self, n: int = 1) -> List[Chromosome]:
+        """Based on the fitness of each individual, select n individuals"""
+
+        # step 1: sort the population by fitness
+        self.individuals.sort(key=lambda x: x.fitness2, reverse=True)
+        sorted_pop = self.individuals
+        
+        # step 2: do a non uniform random selection of the individuals
+        # (ones with the highest fitness have a higher chance of being selected)
+        weights = [i.fitness2 for i in sorted_pop]
+
+        # normalize the weights from 0 to 1 for np.random.choice
+        x = weights
+        normalized_weights = [float(i) / sum(x) for i in x]
 
         # step 3: select the individuals
         # p is the probability of each individual to be selected
         selected = np.random.choice(
             sorted_pop,
-            size=self.size // 10,
-            p=weights,
+            size=n,
+            p=normalized_weights,
             replace=self.duplicate_selection,
         )
+        return selected
 
-        # step 4: form the selected individuals, generate the new population
-        self.individuals = []
-        for _ in range(10):
-            copy = [i.copy() for i in selected]
-            self.individuals.extend(copy)
-        # step 5: crossover the new population
-        self.crossover_population()
-        self.mutate_population()
+    def crossover(self, parent1: Chromosome, parent2: Chromosome) -> Tuple[Chromosome, Chromosome]:
+        """
+        Performs crossover between two parents and returns two children.
+        """
+        child1, child2 = parent1.copy(), parent2.copy()
+        child1.crossover(child2)
+        return child1, child2
 
-    def _non_steady_state_selection(self):
-        self.crossover_population()
-        self.mutate_population()
+    def crossover_population(self, n: Optional[int] = None) -> List[Chromosome]:
+        """
+        Performs crossover on the entire population `n` times.
+        Returns a list of the new individuals.
+        """
 
-    def next_gen(self):
-        the_elite = self.get_best_n(self.elitism_number)
-        if self.steady_state:
-            self._steady_state_selection()
-        else:
-            self._non_steady_state_selection()
-        self.individuals = the_elite + self.individuals[self.elitism_number :]
+        if n is None:
+            n = len(self.individuals) // 2
 
-    def mutate_population(self):
-        for individual in self.individuals:
-            random_call(self.mutation_rate, callback=individual.mutate)
+        new_individuals = []
 
-    def crossover_population(self, fitness_func: Callable = f6):
-        # shuffle individuals
-        np.random.shuffle(self.individuals)
-        # crossover
-        for i in range(0, len(self.individuals), 2):
+        # Select two parents and generate two children
+        for _ in range(n):
+            parent1, parent2 = self.roulette_selection(2)
+            child1, child2 = parent1.copy(), parent2.copy()
 
-            def crossover():
-                parent1 = self.individuals[i]
-                parent2 = self.individuals[i + 1]
-                child1 = self.individuals[i].copy()
-                child2 = self.individuals[i + 1].copy()
+            if np.random.rand() > self.crossover_rate:
+                child1, child2 = self.crossover(parent1, parent2)
 
-                rank = [parent1, parent2, child1, child2]
-                rank.sort(key=lambda x: x.fitness, reverse=True)
-                #print([x.fitness for x in rank])
+            new_individuals += [child1, child2]
 
-                self.individuals[i] = rank[0]
-                self.individuals[i + 1] = rank[1]
-
-            random_call(self.crossover_rate, callback=crossover)
+        return new_individuals
 
 
 class ExperimentSet:
