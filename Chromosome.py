@@ -273,14 +273,24 @@ class Population:
         for individual in self.individuals:
             random_call(self.mutation_rate, callback=individual.mutate)
 
-    def crossover_population(self):
+    def crossover_population(self, fitness_func: Callable = f6):
         # shuffle individuals
         np.random.shuffle(self.individuals)
         # crossover
         for i in range(0, len(self.individuals), 2):
 
             def crossover():
-                self.individuals[i].crossover(self.individuals[i + 1])
+                parent1 = self.individuals[i]
+                parent2 = self.individuals[i + 1]
+                child1 = self.individuals[i].copy()
+                child2 = self.individuals[i + 1].copy()
+
+                rank = [parent1, parent2, child1, child2]
+                rank.sort(key=lambda x: x.fitness, reverse=True)
+                #print([x.fitness for x in rank])
+
+                self.individuals[i] = rank[0]
+                self.individuals[i + 1] = rank[1]
 
             random_call(self.crossover_rate, callback=crossover)
 
