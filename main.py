@@ -10,6 +10,8 @@ from Chromosome import *
 SIZE_POP = 100 # size of population
 N_GENS = 40 # number of generations
 
+N_EXPS = 2
+
 #set np seed
 np.random.seed(42) # 42 is the answer to everything
 # time it decorator
@@ -32,11 +34,11 @@ def main():
                 "crossover_rate": 0.8,
                 "size": SIZE_POP,
                 "elitism_number": 0,
-                "steady_state": True,
+                "steady_state": False,
                 "duplicate_selection": False,
                 "windowing": False,
             },
-            n_experiments=20,
+            n_experiments=N_EXPS,
             n_generations=N_GENS,
             fitness_func=f6,
         )
@@ -52,11 +54,11 @@ def main():
                 "crossover_rate": 0.8,
                 "size": SIZE_POP,
                 "elitism_number": 0,
-                "steady_state": True,
+                "steady_state": False,
                 "duplicate_selection": False,
                 "windowing": True,
             },
-            n_experiments=20,
+            n_experiments=N_EXPS,
             n_generations=N_GENS,
             fitness_func=f6,
         )
@@ -72,11 +74,11 @@ def main():
                 "crossover_rate": 0.8,
                 "size": SIZE_POP,
                 "elitism_number": 0,
-                "steady_state": True,
+                "steady_state": False,
                 "duplicate_selection": False,
                 "linear_scaling": True,
             },
-            n_experiments=20,
+            n_experiments=N_EXPS,
             n_generations=N_GENS,
             fitness_func=f6,
         )
@@ -95,7 +97,7 @@ def main():
                 "steady_state": False,
                 "duplicate_selection": False,
             },
-            n_experiments=20,
+            n_experiments=N_EXPS,
             n_generations=N_GENS,
             fitness_func=f6,
         )
@@ -115,7 +117,7 @@ def main():
                 "duplicate_selection": False,
                 "windowing": False,
             },
-            n_experiments=20,
+            n_experiments=N_EXPS,
             n_generations=N_GENS,
             fitness_func=f6,
         )
@@ -135,7 +137,7 @@ def main():
                 "duplicate_selection": True,
                 "windowing": False,
             },
-            n_experiments=20,
+            n_experiments=N_EXPS,
             n_generations=N_GENS,
             fitness_func=f6,
         )
