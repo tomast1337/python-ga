@@ -315,8 +315,7 @@ class Population:
         weights = [i.fitness2 for i in sorted_pop]
 
         # normalize the weights from 0 to 1 for np.random.choice
-        x = weights
-        normalized_weights = [float(i) / sum(x) for i in x]
+        normalized_weights = np.array(weights) / sum(weights)
 
         # step 3: select the individuals
         # p is the probability of each individual to be selected
