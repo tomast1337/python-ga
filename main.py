@@ -7,24 +7,30 @@ import matplotlib.pyplot as plt
 
 from Chromosome import *
 
-SIZE_POP = 100 # size of population
-N_GENS = 40 # number of generations
+SIZE_POP = 100  # size of population
+N_GENS = 40  # number of generations
 N_EXPS = 20
 
-#set np seed
-np.random.seed(42) # 42 is the answer to everything
+# set np seed
+np.random.seed(42)  # 42 is the answer to everything
+
+
 # time it decorator
-def timeit(func):
+def timeit(func, name=None):
     def wrapper(*args, **kwargs):
         start = time.time()
         result = func(*args, **kwargs)
         end = time.time()
-        print(f"Time taken: {end - start}")
+        print(
+            f"Time taken: {end - start} seconds for {name if name else func.__name__}"
+        )
         return result
+
     return wrapper
 
+
 @timeit
-def main():    
+def run_experiments():
     @timeit
     def fitness_without_windowing():
         print("Running fitness_without_windowing")
@@ -150,12 +156,25 @@ def main():
         mean_history = experiment.get_mean_history()
         return mean_history
 
-    fitness_without_windowing = fitness_without_windowing()
-    fitness_windowing = fitness_windowing()
-    fitness_linear_scaling = fitness_linear_scaling()
-    steady_state_with_dupes = steady_state_with_dupes()
-    steady_state_without_dupes = steady_state_without_dupes()
-    elitism_no_steady_state = elitism_no_steady_state()
+    return {
+        fitness_without_windowing: fitness_without_windowing(),
+        fitness_windowing: fitness_windowing(),
+        fitness_linear_scaling: fitness_linear_scaling(),
+        steady_state_with_dupes: steady_state_with_dupes(),
+        steady_state_without_dupes: steady_state_without_dupes(),
+        elitism_no_steady_state: elitism_no_steady_state(),
+    }
+
+
+def main():
+    results = run_experiments()
+
+    fitness_without_windowing = results["fitness_without_windowing"]
+    fitness_windowing = results["fitness_windowing"]
+    fitness_linear_scaling = results["fitness_linear_scaling"]
+    steady_state_with_dupes = results["steady_state_with_dupes"]
+    steady_state_without_dupes = results["steady_state_without_dupes"]
+    elitism_no_steady_state = results["elitism_no_steady_state"]
 
     def nines_after_decimal(df, name):
         plt.plot(df["Generation"], df["9s after the decimal"], label=name)
