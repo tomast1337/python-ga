@@ -238,10 +238,10 @@ class Population:
         # The larger the increment, the more selective the sorting will be
         # (the higher the difference between the best and worst individuals)
 
-        # Sort the population in descending order based on the evaluation function (f6)
-        sorted_pop = sorted(self.individuals, key=lambda x: x.evaluation, reverse=True)
-        max = sorted_pop[0].evaluation
-        min = sorted_pop[-1].evaluation
+        # Sort the population in ascending order based on the evaluation function (f6)
+        sorted_pop = sorted(self.individuals, key=lambda x: x.evaluation)
+        min = sorted_pop[0].evaluation
+        max = sorted_pop[-1].evaluation
         for i in range(len(sorted_pop)):
             sorted_pop[i].fitness2 = min + (max - min) * (i / (len(sorted_pop) - 1))
 
