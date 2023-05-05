@@ -157,18 +157,17 @@ def run_experiments():
         return mean_history
 
     return {
-        fitness_without_windowing: fitness_without_windowing(),
-        fitness_windowing: fitness_windowing(),
-        fitness_linear_scaling: fitness_linear_scaling(),
-        steady_state_with_dupes: steady_state_with_dupes(),
-        steady_state_without_dupes: steady_state_without_dupes(),
-        elitism_no_steady_state: elitism_no_steady_state(),
+        "fitness_without_windowing": fitness_without_windowing(),
+        "fitness_windowing": fitness_windowing(),
+        "fitness_linear_scaling": fitness_linear_scaling(),
+        "steady_state_with_dupes": steady_state_with_dupes(),
+        "steady_state_without_dupes": steady_state_without_dupes(),
+        "elitism_no_steady_state": elitism_no_steady_state(),
     }
 
 
 def main():
     results = run_experiments()
-
     fitness_without_windowing = results["fitness_without_windowing"]
     fitness_windowing = results["fitness_windowing"]
     fitness_linear_scaling = results["fitness_linear_scaling"]
