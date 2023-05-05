@@ -49,8 +49,7 @@ def run_experiments():
             fitness_func=f6,
         )
         experiment.run()
-        mean_history = experiment.get_mean_history()
-        return mean_history
+        return experiment
 
     @timeit
     def fitness_windowing():
@@ -70,8 +69,7 @@ def run_experiments():
             fitness_func=f6,
         )
         experiment.run()
-        mean_history = experiment.get_mean_history()
-        return mean_history
+        return experiment
 
     @timeit
     def fitness_linear_scaling():
@@ -91,8 +89,7 @@ def run_experiments():
             fitness_func=f6,
         )
         experiment.run()
-        mean_history = experiment.get_mean_history()
-        return mean_history
+        return experiment
 
     @timeit
     def elitism_no_steady_state():
@@ -111,8 +108,7 @@ def run_experiments():
             fitness_func=f6,
         )
         experiment.run()
-        mean_history = experiment.get_mean_history()
-        return mean_history
+        return experiment
 
     @timeit
     def steady_state_without_dupes():
@@ -132,8 +128,7 @@ def run_experiments():
             fitness_func=f6,
         )
         experiment.run()
-        mean_history = experiment.get_mean_history()
-        return mean_history
+        return experiment
 
     @timeit
     def steady_state_with_dupes():
@@ -153,8 +148,7 @@ def run_experiments():
             fitness_func=f6,
         )
         experiment.run()
-        mean_history = experiment.get_mean_history()
-        return mean_history
+        return experiment
 
     return {
         "fitness_without_windowing": fitness_without_windowing(),
@@ -168,12 +162,15 @@ def run_experiments():
 
 def main():
     results = run_experiments()
-    fitness_without_windowing = results["fitness_without_windowing"]
-    fitness_windowing = results["fitness_windowing"]
-    fitness_linear_scaling = results["fitness_linear_scaling"]
-    steady_state_with_dupes = results["steady_state_with_dupes"]
-    steady_state_without_dupes = results["steady_state_without_dupes"]
-    elitism_no_steady_state = results["elitism_no_steady_state"]
+
+    fitness_without_windowing = results["fitness_without_windowing"].get_mean_history()
+    fitness_windowing = results["fitness_windowing"].get_mean_history()
+    fitness_linear_scaling = results["fitness_linear_scaling"].get_mean_history()
+    steady_state_with_dupes = results["steady_state_with_dupes"].get_mean_history()
+    steady_state_without_dupes = results[
+        "steady_state_without_dupes"
+    ].get_mean_history()
+    elitism_no_steady_state = results["elitism_no_steady_state"].get_mean_history()
 
     def nines_after_decimal(df, name):
         plt.plot(df["Generation"], df["9s after the decimal"], label=name)
@@ -229,6 +226,25 @@ def main():
 
     plt.tight_layout()
     plt.show()
+
+    results["fitness_without_windowing"].get_3d_plot_of_best_solutions(
+        "Best Solutions Fitness is The Evaluation"
+    )
+    results["fitness_windowing"].get_3d_plot_of_best_solutions(
+        "Best Solutions Fitness Windowing"
+    )
+    results["fitness_linear_scaling"].get_3d_plot_of_best_solutions(
+        "Best Solutions Fitness Linear Scaling"
+    )
+    results["steady_state_with_dupes"].get_3d_plot_of_best_solutions(
+        "Best Solutions Steady State With Dupes"
+    )
+    results["steady_state_without_dupes"].get_3d_plot_of_best_solutions(
+        "Best Solutions Steady State Without Dupes"
+    )
+    results["elitism_no_steady_state"].get_3d_plot_of_best_solutions(
+        "Best Solutions Elitism Without Steady State"
+    )
 
 
 if __name__ == "__main__":

@@ -107,13 +107,27 @@ class Chromosome:
         )
 
     @property
+    def x(self) -> float:
+        """
+        Retorna a coordenada x do cromossomo.
+        """
+        return self.to_coords()[0]
+
+    @property
+    def y(self) -> float:
+        """
+        Retorna a coordenada y do cromossomo.
+        """
+        return self.to_coords()[1]
+
+    @property
     def fitness(self, func: Callable[[float, float], float] = f6) -> float:
         """
         Calcula a aptidão do cromossomo de acordo com a função de avaliação `func`.
         """
         coords = self.to_coords()
         return func(*coords)
-    
+
     @property
     def evaluation(self, func: Callable[[float, float], float] = f6) -> float:
         """
@@ -121,6 +135,7 @@ class Chromosome:
         """
         coords = self.to_coords()
         return func(*coords)
+
 
 def random_call(chance: float, callback: Optional[Callable] = None) -> bool:
     """
@@ -257,7 +272,6 @@ class Population:
             self._fitness_evaluation()
 
     def _perform_simple_selection(self):
-
         # Perform crossover and mutation to create the new generation
         new_individuals = self.crossover_population()
         new_individuals = self.mutate_population(new_individuals)
@@ -288,7 +302,9 @@ class Population:
         # Add the elite to the new generation
         self.individuals = the_elite + self.individuals[self.elitism_number :]
 
-    def mutate_population(self, individuals: Optional[List[Chromosome]] = None) -> List[Chromosome]:
+    def mutate_population(
+        self, individuals: Optional[List[Chromosome]] = None
+    ) -> List[Chromosome]:
         """
         Return a new population with mutated individuals. If individuals is None,
         mutate the entire population.
@@ -309,7 +325,7 @@ class Population:
         # step 1: sort the population by fitness
         self.individuals.sort(key=lambda x: x.fitness2, reverse=True)
         sorted_pop = self.individuals
-        
+
         # step 2: do a non uniform random selection of the individuals
         # (ones with the highest fitness have a higher chance of being selected)
         weights = [i.fitness2 for i in sorted_pop]
@@ -327,7 +343,9 @@ class Population:
         )
         return selected
 
-    def crossover(self, parent1: Chromosome, parent2: Chromosome) -> Tuple[Chromosome, Chromosome]:
+    def crossover(
+        self, parent1: Chromosome, parent2: Chromosome
+    ) -> Tuple[Chromosome, Chromosome]:
         """
         Performs crossover between two parents and returns two children.
         """
@@ -441,6 +459,43 @@ class ExperimentSet:
             }
             df = pd.concat([df, pd.DataFrame(data, index=[0])], ignore_index=True)
         return df
+
+    def get_3d_plot_of_best_solutions(self, title: str = "Best solutions"):
+        plt.figure(figsize=(10, 10))
+        plt.title(title)
+        g_range = 10
+        ax = plt.axes(projection="3d")
+        ax.set_xlabel("x")
+        ax.set_ylabel("y")
+        ax.set_zlabel("z")
+        ax.set_xlim(-g_range, g_range)
+        ax.set_ylim(-g_range, g_range)
+        ax.set_zlim(0, 1)
+        ax.view_init(30, 30)
+        # show f6 function surface
+        x = np.linspace(-g_range, g_range, 100)
+        y = np.linspace(-g_range, g_range, 100)
+        X, Y = np.meshgrid(x, y)
+        Z = f6(X, Y)
+        ax.plot_surface(
+            X,
+            Y,
+            Z,
+            rstride=1,
+            cstride=1,
+            cmap="terrain",
+            edgecolor="none",
+            alpha=0.4,
+        )
+
+        # show best solutions
+        for population, index in zip(self.populations, range(len(self.populations))):
+            best = population.get_best_n(1)[0]
+            ax.scatter3D(
+                best.x, best.y, best.fitness, c="r", marker="o", label=f"{index + 1}"
+            )
+
+        plt.show()
 
 
 def test():
