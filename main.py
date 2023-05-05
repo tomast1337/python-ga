@@ -9,8 +9,7 @@ from Chromosome import *
 
 SIZE_POP = 100 # size of population
 N_GENS = 40 # number of generations
-
-N_EXPS = 2
+N_EXPS = 20
 
 #set np seed
 np.random.seed(42) # 42 is the answer to everything
@@ -28,6 +27,7 @@ def timeit(func):
 def main():    
     @timeit
     def fitness_without_windowing():
+        print("Running fitness_without_windowing")
         experiment = ExperimentSet(
             populations_param={
                 "mutation_rate": 0.1,
@@ -48,6 +48,7 @@ def main():
 
     @timeit
     def fitness_windowing():
+        print("Running fitness_windowing")
         experiment = ExperimentSet(
             populations_param={
                 "mutation_rate": 0.1,
@@ -68,6 +69,7 @@ def main():
 
     @timeit
     def fitness_linear_scaling():
+        print("Running fitness_linear_scaling")
         experiment = ExperimentSet(
             populations_param={
                 "mutation_rate": 0.1,
@@ -88,6 +90,7 @@ def main():
 
     @timeit
     def elitism_no_steady_state():
+        print("Running elitism_no_steady_state")
         experiment = ExperimentSet(
             populations_param={
                 "mutation_rate": 0.1,
@@ -107,6 +110,7 @@ def main():
 
     @timeit
     def steady_state_without_dupes():
+        print("Running steady_state_without_dupes")
         experiment = ExperimentSet(
             populations_param={
                 "mutation_rate": 0.1,
@@ -127,6 +131,7 @@ def main():
 
     @timeit
     def steady_state_with_dupes():
+        print("Running steady_state_with_dupes")
         experiment = ExperimentSet(
             populations_param={
                 "mutation_rate": 0.1,
