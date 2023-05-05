@@ -258,9 +258,6 @@ class Population:
 
     def _perform_simple_selection(self):
 
-        # Set the fitness of each individual
-        self.calculate_fitness()
-
         # Perform crossover and mutation to create the new generation
         new_individuals = self.crossover_population()
         new_individuals = self.mutate_population(new_individuals)
